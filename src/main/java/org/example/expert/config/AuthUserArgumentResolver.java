@@ -1,6 +1,7 @@
 package org.example.expert.config;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.example.expert.domain.auth.exception.AuthException;
 import org.example.expert.domain.common.annotation.Auth;
 import org.example.expert.domain.common.dto.AuthUser;
@@ -12,6 +13,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+@Slf4j
 public class AuthUserArgumentResolver implements HandlerMethodArgumentResolver {
 
     @Override
@@ -36,11 +38,12 @@ public class AuthUserArgumentResolver implements HandlerMethodArgumentResolver {
     ) {
         HttpServletRequest request = (HttpServletRequest) webRequest.getNativeRequest();
 
-        // JwtFilter 에서 set 한 userId, email, userRole 값을 가져옴
-        Long userId = (Long) request.getAttribute("userId");
+        // JwtFilter 에서 set 한 userId, email,userNickName, userRole 값을 가져옴
         String email = (String) request.getAttribute("email");
+        Long userId = (Long) request.getAttribute("userId");
+        String userNickName = (String) request.getAttribute("userNickName");
         UserRole userRole = UserRole.of((String) request.getAttribute("userRole"));
 
-        return new AuthUser(userId, email, userRole);
+        return new AuthUser(userId, email,userNickName ,userRole);
     }
 }

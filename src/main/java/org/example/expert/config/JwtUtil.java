@@ -1,8 +1,6 @@
 package org.example.expert.config;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
@@ -20,46 +19,38 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    private static final String BEARER_PREFIX = "Bearer ";
-    private static final long TOKEN_TIME = 60 * 60 * 1000L; // 60분
-
+    private static final long EXPIRATION_TIME = 1000L * 60 * 60; //60분
     @Value("${jwt.secret.key}")
     private String secretKey;
-    private Key key;
-    private final SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
 
-    @PostConstruct
-    public void init() {
-        byte[] bytes = Base64.getDecoder().decode(secretKey);
-        key = Keys.hmacShaKeyFor(bytes);
-    }
 
-    public String createToken(Long userId, String email, UserRole userRole) {
+    //토큰 발급 (userNickName 추가 )
+    public String createToken(String email,Long userId,String userNickName, UserRole userRole) {
         Date date = new Date();
 
-        return BEARER_PREFIX +
-                Jwts.builder()
-                        .setSubject(String.valueOf(userId))
-                        .claim("email", email)
-                        .claim("userRole", userRole)
-                        .setExpiration(new Date(date.getTime() + TOKEN_TIME))
-                        .setIssuedAt(date) // 발급일
-                        .signWith(key, signatureAlgorithm) // 암호화 알고리즘
-                        .compact();
+        return Jwts.builder()
+                .setSubject(email)
+                .claim("userId", userId)
+                .claim("userNickName", userNickName)
+                .claim("userRole", userRole)
+                .setIssuedAt(date) // 발급일
+                .setExpiration(new Date(date.getTime() + EXPIRATION_TIME))
+                .signWith(Keys.hmacShaKeyFor(secretKey.getBytes()), SignatureAlgorithm.HS256) // 서명
+                .compact();
     }
 
-    public String substringToken(String tokenValue) {
-        if (StringUtils.hasText(tokenValue) && tokenValue.startsWith(BEARER_PREFIX)) {
-            return tokenValue.substring(7);
+    //토큰 검증
+    public Claims validateToken(String token){
+        try{
+            return Jwts.parserBuilder()
+                    .setSigningKey(Keys.hmacShaKeyFor(secretKey.getBytes()))
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        }catch(JwtException e){
+            return null;
         }
-        throw new ServerException("Not Found Token");
+
     }
 
-    public Claims extractClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-    }
 }
